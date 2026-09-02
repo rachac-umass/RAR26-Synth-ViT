@@ -166,8 +166,8 @@ def generate_image(
 
     result = inferencer(
         text=prompt,
-        think=think,                 # True: model plans in <think>...</think> before generating
-        understanding_output=False,  # False = image-generation task (True would be VQA/text output)
+        think=think,                 
+        understanding_output=False,  
         cfg_text_scale=cfg_text_scale,
         cfg_img_scale=cfg_img_scale,
         cfg_interval=[0.0, 1.0],

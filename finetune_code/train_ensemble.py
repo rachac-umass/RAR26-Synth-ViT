@@ -881,18 +881,7 @@ def build_backbone(args, device):
             num_classes=0
         )
     elif args.model_name.startswith("timm_gutcore_vitl_patch14"):
-        # GutCore-ViT-L (https://github.com/SMC-GutX/GutCore) is a ViT-L/14 at 336px, but --
-        # despite the "timm_" prefix kept here for backwards compatibility with existing run
-        # configs -- it is NOT the plain timm dinov2 arch (learned pos_embed, standard MLP):
-        # it's the facebookresearch/dinov3 DinoVisionTransformer architecture (RoPE position
-        # embeddings, SwiGLU FFN) at patch_size=14 instead of the public patch16 checkpoints.
-        # None of the dinov3 repo's torch.hub entrypoints (dinov3_vitl16 etc.) allow
-        # overriding patch_size/ffn_layer, so build the same class directly via its internal
-        # _make_dinov3_vit helper. Config below is copied verbatim from the official
-        # EncoderConfig in github.com/SMC-GutX/GutCore/blob/main/src/gutcore/config.py
-        # (build_encoder() in encoder.py constructs DinoVisionTransformer with these exact
-        # kwargs) -- confirmed against the actual checkpoint's tensor shapes: loading it here
-        # leaves 0 unexpected_keys and only non-persistent qkv.bias_mask buffers missing.
+
         torch.hub.list("facebookresearch/dinov3", trust_repo=True)
         dinov3_repo_dir = os.path.join(torch.hub.get_dir(), "facebookresearch_dinov3_main")
         if dinov3_repo_dir not in sys.path:
@@ -1624,62 +1613,33 @@ def main(args):
                 use_extradata_red_patch = args.use_extradata_red_patch,
                 resize_img_dim = args.resize_img_dim)
 
-    # Cache filename reflects the actual composition of the *fold split*, not just
-    # whether base_dataset includes the extra data. endovis_train_only leaves Endovis
-    # out of the fold split (it's injected into train_idx only, after folds are loaded/
-    # created below), so it reuses the base fold file instead of a dedicated one.
-    # neo_only_active leaves it out of the fold split the same way (its neo subset is
-    # injected into train_idx only, below), so it collapses to '' here too.
+
     endovis_suffix = 'endo' if (args.use_extradata_Endovis and not endovis_train_only_active and not neo_only_active) else ''
 
-    # Cache filename reflects the actual data composition of base_dataset, not the
-    # run's intent -- "test" and "excluded" both leave EDD2020 out of base_dataset,
-    # so they share the same cached folds. edd2020_train_only also leaves EDD2020 out
-    # of the *fold split* (it's injected into train_idx only, after folds are loaded/
-    # created below), so it reuses that same base fold file too.
+
     edd2020_suffix = 'edd2020' if (edd2020_usage == "train" and not edd2020_train_only_active) else ''
 
-    # Same reasoning as endovis_suffix/edd2020_suffix above: hyper_short_segment_train_only
-    # (and neo_only_active) leaves hyper_short_segment out of the *fold split* (injected
-    # into train_idx only, after folds are loaded/created below), so it reuses the base
-    # fold file too.
+
     hss_suffix = 'hypershortseg' if (args.use_extradata_hyper_short_segment and not hyper_short_segment_train_only_active and not neo_only_active) else ''
 
-    # Same reasoning as endovis_suffix/edd2020_suffix/hss_suffix above: gastrovision_train_only
-    # (and neo_only_active) leaves GastroVision out of the *fold split* (injected into
-    # train_idx only, after folds are loaded/created below), so it reuses the base fold
-    # file too.
+
     gastrovision_suffix = 'gastrovision' if (args.use_extradata_GastroVision and not gastrovision_train_only_active and not neo_only_active) else ''
 
-    # Same reasoning as endovis_suffix/edd2020_suffix/hss_suffix/gastrovision_suffix
-    # above: synthetic_data_train_only (and neo_only_active) leaves synthetic_data out
-    # of the *fold split* (injected into train_idx only, after folds are loaded/created
-    # below), so it reuses the base fold file too.
+
     synthetic_data_suffix = 'syntheticdata' if (args.use_extradata_synthetic_data and not synthetic_data_train_only_active and not neo_only_active) else ''
 
-    # Same reasoning as endovis_suffix/edd2020_suffix/hss_suffix/gastrovision_suffix/
-    # synthetic_data_suffix above: barett_archive_train_only (and neo_only_active) leaves
-    # barett_archive out of the *fold split* (injected into train_idx only, after folds
-    # are loaded/created below), so it reuses the base fold file too.
+
     barett_archive_suffix = 'barettarchive' if (args.use_extradata_barett_archive and not barett_archive_train_only_active and not neo_only_active) else ''
 
-    # Same reasoning as endovis_suffix/edd2020_suffix/hss_suffix/gastrovision_suffix/
-    # synthetic_data_suffix/barett_archive_suffix above: red_patch_train_only (and
-    # neo_only_active) leaves red_patch out of the *fold split* (injected into train_idx
-    # only, after folds are loaded/created below), so it reuses the base fold file too.
+
     red_patch_suffix = 'redpatch' if (args.use_extradata_red_patch and not red_patch_train_only_active and not neo_only_active) else ''
 
-    # neo_only_active additionally excludes external_data_hyper (never flag-gated in
-    # RareDataset to begin with, so it isn't covered by any suffix above) and drops the
-    # 'ndbe' half of every other-source folder entirely -- both changes shift the fold
-    # split's composition, so this needs its own cache suffix.
+
     neo_only_suffix = 'neoonlyother' if neo_only_active else ''
 
     centersplit_suffix = f"centerholdout{args.center_test_size}" if args.split_centers_train_test else ''
 
-    # --run_tag lets a run opt out of the shared fold cache entirely (e.g. for a
-    # one-off experiment that shouldn't read/write the common master_folds file),
-    # by giving it its own dedicated fold file.
+
     run_tag_suffix = args.run_tag if args.run_tag else ''
 
     master_folds_filename = f"master_folds_base_data_{endovis_suffix}_{edd2020_suffix}_{hss_suffix}_{gastrovision_suffix}_{synthetic_data_suffix}_{barett_archive_suffix}_{red_patch_suffix}_{centersplit_suffix}_{neo_only_suffix}_{run_tag_suffix}.json"
