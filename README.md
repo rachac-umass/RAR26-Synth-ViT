@@ -11,6 +11,8 @@ reported here as **PPV@90% Recall**, together with AUPRC.
 The final submission is an ensemble of **3 DINOv2 ViT-B/14 configurations**, giving
 **13 fold checkpoints** in total. Their predicted probabilities are averaged.
 
+Update:
+**Placed 3rd position in close test phase with PPV@90%Recall: 0.095 and AUC-ROC: 0.9542 !!**
 ---
 
 ## Table of contents
